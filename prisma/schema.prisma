@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime       @default(now())
+  documents    Document[]
+  family       FamilyMember[]
+  shares       ShareLink[]
+}
+
+model Document {
+  id         String          @id @default(cuid())
+  ownerId    String
+  owner      User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name       String
+  category   String
+  scope      String
+  issueDate  DateTime?
+  expiryDate DateTime?
+  notes      String          @default("")
+  createdAt  DateTime        @default(now())
+  usages     DocumentUsage[]
+  shares     ShareLink[]
+
+  @@index([ownerId])
+  @@index([category])
+}
+
+model DocumentUsage {
+  id         String   @id @default(cuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  context    String
+
+  @@index([documentId])
+}
+
+model ShareLink {
+  id          String   @id @default(cuid())
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  purpose     String
+  watermark   String
+  expiresAt   DateTime
+  revoked     Boolean  @default(false)
+  tokenId     String   @unique
+  createdAt   DateTime @default(now())
+
+  @@index([ownerId])
+  @@index([documentId])
+}
+
+model FamilyMember {
+  id              String   @id @default(cuid())
+  ownerId         String
+  owner           User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name            String
+  relation        String
+  role            String
+  emergencyAccess Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([ownerId])
+}
