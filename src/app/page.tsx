@@ -1,718 +1,619 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import {
-  type DocumentItem,
-  type FamilyMember,
-  type ShareLink,
-  type SharingPurpose,
-  getCategoryBreakdown,
-  getReminders,
-  getUsageIndex,
-  lifeCategories,
-  sharingPurposes,
-  usageContexts,
-} from "@/lib/paperwork";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 
-type SessionUser = {
-  userId: string;
-  email: string;
-  name: string;
-};
+const features = [
+  {
+    icon: "🗂️",
+    title: "Life-Based Organisation",
+    subtitle: "Not folders. Life categories.",
+    description:
+      "Documents are grouped by Identity, Education, Health, Finance, Property, Travel, and Work — the way your life actually works.",
+    color: "from-violet-500/20 to-purple-500/20",
+    border: "border-violet-500/30",
+    badge: "bg-violet-500/10 text-violet-300",
+  },
+  {
+    icon: "⏰",
+    title: "Smart Expiry Engine",
+    subtitle: "Never miss a renewal again.",
+    description:
+      "Automatically detects expiry dates on passports, insurance, and licenses. Nudges you early — before it's too late.",
+    color: "from-amber-500/20 to-orange-500/20",
+    border: "border-amber-500/30",
+    badge: "bg-amber-500/10 text-amber-300",
+  },
+  {
+    icon: "🧠",
+    title: "Usage Intelligence",
+    subtitle: "Know where every document lives.",
+    description:
+      "PAN used for tax, banking, and job? Aadhaar for SIM and KYC? We map it all, so you never accidentally delete something critical.",
+    color: "from-emerald-500/20 to-teal-500/20",
+    border: "border-emerald-500/30",
+    badge: "bg-emerald-500/10 text-emerald-300",
+  },
+  {
+    icon: "🔒",
+    title: "Secure Smart Sharing",
+    subtitle: "No more raw PDFs on WhatsApp.",
+    description:
+      "Generate time-limited, watermarked share links for specific purposes — Bank, HR, College. Revoke anytime with one click.",
+    color: "from-sky-500/20 to-blue-500/20",
+    border: "border-sky-500/30",
+    badge: "bg-sky-500/10 text-sky-300",
+  },
+  {
+    icon: "👨‍👩‍👧‍👦",
+    title: "Family Vault",
+    subtitle: "One system for the whole family.",
+    description:
+      "Shared documents with role-based access. Emergency access mode for critical situations. Everyone's paperwork, one place.",
+    color: "from-rose-500/20 to-pink-500/20",
+    border: "border-rose-500/30",
+    badge: "bg-rose-500/10 text-rose-300",
+  },
+  {
+    icon: "🔍",
+    title: "Category Health Check",
+    subtitle: "See your paperwork coverage at a glance.",
+    description:
+      "Instantly know which life areas are well-documented and which need attention. Never feel blindsided by missing paperwork.",
+    color: "from-indigo-500/20 to-blue-500/20",
+    border: "border-indigo-500/30",
+    badge: "bg-indigo-500/10 text-indigo-300",
+  },
+];
 
-const formatDate = (isoDate: string) =>
-  new Date(isoDate).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+const steps = [
+  {
+    number: "01",
+    title: "Sign up in 30 seconds",
+    description: "Create your secure account with just your email and a password. No credit card needed to start.",
+  },
+  {
+    number: "02",
+    title: "Add your documents",
+    description: "Log your documents by life category. Add expiry dates, notes, and map where each document is used.",
+  },
+  {
+    number: "03",
+    title: "Get reminders that matter",
+    description: "We track every expiry date and nudge you well in advance. Never scramble at the last moment.",
+  },
+  {
+    number: "04",
+    title: "Share safely, not recklessly",
+    description: "Generate secure, watermarked share links instead of forwarding originals on WhatsApp.",
+  },
+];
 
-const parseError = async (response: Response) => {
-  const data = (await response.json().catch(() => null)) as
-    | { error?: string }
-    | null;
-  return data?.error ?? `Request failed (${response.status})`;
-};
+const segments = [
+  { emoji: "🎓", label: "Students", description: "Marksheets, IDs, internship letters, certificates" },
+  { emoji: "👨‍💼", label: "Professionals", description: "PAN, Aadhaar, salary slips, offer letters, insurance" },
+  { emoji: "👨‍👩‍👧", label: "Families", description: "Shared access, kids' documents, medical history" },
+  { emoji: "👴", label: "Seniors", description: "Pension, medical, insurance, property papers" },
+];
 
-export default function Home() {
-  const [user, setUser] = useState<SessionUser | null>(null);
-  const [documents, setDocuments] = useState<DocumentItem[]>([]);
-  const [members, setMembers] = useState<FamilyMember[]>([]);
-  const [shareLinks, setShareLinks] = useState<ShareLink[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const stats = [
+  { value: "7", label: "Life categories", suffix: "" },
+  { value: "48", label: "hrs saved yearly", suffix: "+" },
+  { value: "100", label: "Documents per vault", suffix: "%" },
+  { value: "0", label: "WhatsApp PDFs needed", suffix: "" },
+];
 
-  const [authMode, setAuthMode] = useState<"login" | "register">("register");
-  const [authName, setAuthName] = useState("");
-  const [authEmail, setAuthEmail] = useState("");
-  const [authPassword, setAuthPassword] = useState("");
+const testimonials = [
+  {
+    quote: "I finally know exactly when my car insurance expires. No more panicking at 11 PM before renewal.",
+    name: "Priya Sharma",
+    role: "Software Engineer, Bengaluru",
+    avatar: "P",
+    color: "bg-violet-500",
+  },
+  {
+    quote: "Sharing documents with my CA used to be a mess. Now I send a secure link and revoke it after. Game changer.",
+    name: "Rahul Mehra",
+    role: "Business Owner, Mumbai",
+    avatar: "R",
+    color: "bg-emerald-500",
+  },
+  {
+    quote: "My parents' medical records and property papers are finally organised. I feel so much more in control.",
+    name: "Ananya Iyer",
+    role: "Doctor, Chennai",
+    avatar: "A",
+    color: "bg-rose-500",
+  },
+];
 
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState<(typeof lifeCategories)[number]>(
-    "Identity",
-  );
-  const [expiryDate, setExpiryDate] = useState("");
-  const [owner, setOwner] = useState<"Self" | "Family">("Self");
-  const [notes, setNotes] = useState("");
-  const [selectedUsage, setSelectedUsage] = useState<string[]>(["KYC"]);
-  const [memberName, setMemberName] = useState("");
-  const [memberRelation, setMemberRelation] = useState("");
-
-  const reminders = useMemo(() => getReminders(documents), [documents]);
-  const usageIndex = useMemo(() => getUsageIndex(documents), [documents]);
-  const categoryBreakdown = useMemo(
-    () => getCategoryBreakdown(documents),
-    [documents],
-  );
-
-  const refreshData = async () => {
-    setError(null);
-
-    const [documentsRes, familyRes, sharesRes] = await Promise.all([
-      fetch("/api/documents"),
-      fetch("/api/family"),
-      fetch("/api/shares"),
-    ]);
-
-    if (!documentsRes.ok || !familyRes.ok || !sharesRes.ok) {
-      const firstFailed = [documentsRes, familyRes, sharesRes].find(
-        (response) => !response.ok,
-      );
-
-      if (firstFailed) {
-        setError(await parseError(firstFailed));
-      }
-
-      return;
-    }
-
-    const documentsData = (await documentsRes.json()) as {
-      documents: DocumentItem[];
-    };
-    const familyData = (await familyRes.json()) as { members: FamilyMember[] };
-    const sharesData = (await sharesRes.json()) as { shareLinks: ShareLink[] };
-
-    setDocuments(documentsData.documents);
-    setMembers(familyData.members);
-    setShareLinks(sharesData.shareLinks);
-  };
+export default function LandingPage() {
+  const [mounted, setMounted] = useState(false);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    const bootstrap = async () => {
-      setLoading(true);
+    setMounted(true);
 
-      const meResponse = await fetch("/api/auth/me");
-      const meData = (await meResponse.json()) as { user: SessionUser | null };
-      setUser(meData.user);
-
-      if (meData.user) {
-        await refreshData();
-      }
-
-      setLoading(false);
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!heroRef.current) return;
+      const rect = heroRef.current.getBoundingClientRect();
+      setMousePos({
+        x: ((e.clientX - rect.left) / rect.width - 0.5) * 30,
+        y: ((e.clientY - rect.top) / rect.height - 0.5) * 30,
+      });
     };
 
-    void bootstrap();
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  const onAuthSubmit = async () => {
-    setError(null);
-
-    const route = authMode === "register" ? "/api/auth/register" : "/api/auth/login";
-    const payload =
-      authMode === "register"
-        ? { name: authName, email: authEmail, password: authPassword }
-        : { email: authEmail, password: authPassword };
-
-    const response = await fetch(route, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      setError(await parseError(response));
-      return;
-    }
-
-    const data = (await response.json()) as { user: SessionUser };
-    setUser(data.user);
-    setAuthPassword("");
-    await refreshData();
-  };
-
-  const logout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    setUser(null);
-    setDocuments([]);
-    setMembers([]);
-    setShareLinks([]);
-  };
-
-  const addDocument = async () => {
-    if (!name.trim()) {
-      return;
-    }
-
-    const response = await fetch("/api/documents", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: name.trim(),
-        category,
-        owner,
-        expiryDate,
-        notes: notes.trim(),
-        usedFor: selectedUsage.length ? selectedUsage : ["KYC"],
-      }),
-    });
-
-    if (!response.ok) {
-      setError(await parseError(response));
-      return;
-    }
-
-    const data = (await response.json()) as { document: DocumentItem };
-    setDocuments((prev) => [data.document, ...prev]);
-    setName("");
-    setExpiryDate("");
-    setNotes("");
-    setSelectedUsage(["KYC"]);
-  };
-
-  const toggleUsage = (context: string) => {
-    setSelectedUsage((prev) =>
-      prev.includes(context)
-        ? prev.filter((value) => value !== context)
-        : [...prev, context],
-    );
-  };
-
-  const createShareLink = async (documentId: string, purpose: SharingPurpose) => {
-    const response = await fetch("/api/shares", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ documentId, purpose }),
-    });
-
-    if (!response.ok) {
-      setError(await parseError(response));
-      return;
-    }
-
-    const data = (await response.json()) as {
-      shareLink: ShareLink;
-    };
-
-    setShareLinks((prev) => [data.shareLink, ...prev]);
-  };
-
-  const openShare = async (id: string) => {
-    const response = await fetch(`/api/shares/${id}/access`);
-    if (!response.ok) {
-      setError(await parseError(response));
-      return;
-    }
-
-    const data = (await response.json()) as { urlPath: string };
-    window.open(data.urlPath, "_blank", "noopener,noreferrer");
-  };
-
-  const revokeShare = async (id: string) => {
-    const response = await fetch(`/api/shares/${id}/revoke`, { method: "POST" });
-
-    if (!response.ok) {
-      setError(await parseError(response));
-      return;
-    }
-
-    setShareLinks((prev) =>
-      prev.map((link) => (link.id === id ? { ...link, revoked: true } : link)),
-    );
-  };
-
-  const addMember = async () => {
-    if (!memberName.trim() || !memberRelation.trim()) {
-      return;
-    }
-
-    const response = await fetch("/api/family", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: memberName.trim(),
-        relation: memberRelation.trim(),
-      }),
-    });
-
-    if (!response.ok) {
-      setError(await parseError(response));
-      return;
-    }
-
-    const data = (await response.json()) as { member: FamilyMember };
-
-    setMembers((prev) => [data.member, ...prev]);
-    setMemberName("");
-    setMemberRelation("");
-  };
-
-  const patchMember = async (memberId: string, payload: Partial<FamilyMember>) => {
-    const response = await fetch(`/api/family/${memberId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      setError(await parseError(response));
-      return;
-    }
-
-    const data = (await response.json()) as { member: FamilyMember };
-    setMembers((prev) => prev.map((item) => (item.id === memberId ? data.member : item)));
-  };
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-700">
-        Loading Personal Paperwork OS...
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-        <main className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5">
-          <p className="text-sm font-medium text-slate-500">Personal Paperwork OS</p>
-          <h1 className="mt-1 text-xl font-semibold">Secure sign in</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            {authMode === "register"
-              ? "Create your account to start organizing paperwork."
-              : "Sign in to access your document dashboard."}
-          </p>
-
-          <div className="mt-4 space-y-3">
-            {authMode === "register" && (
-              <input
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                placeholder="Full name"
-                value={authName}
-                onChange={(event) => setAuthName(event.target.value)}
-              />
-            )}
-            <input
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              placeholder="Email"
-              type="email"
-              value={authEmail}
-              onChange={(event) => setAuthEmail(event.target.value)}
-            />
-            <input
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              placeholder="Password"
-              type="password"
-              value={authPassword}
-              onChange={(event) => setAuthPassword(event.target.value)}
-            />
-          </div>
-
-          {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-
-          <button
-            type="button"
-            className="mt-4 w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
-            onClick={onAuthSubmit}
-          >
-            {authMode === "register" ? "Create account" : "Sign in"}
-          </button>
-
-          <button
-            type="button"
-            className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2 text-sm"
-            onClick={() => setAuthMode((prev) => (prev === "register" ? "login" : "register"))}
-          >
-            {authMode === "register"
-              ? "Already have an account? Sign in"
-              : "Need an account? Register"}
-          </button>
-        </main>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        <header className="rounded-xl border border-slate-200 bg-white p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-medium text-slate-500">Personal Paperwork OS</p>
-            <button
-              type="button"
-              className="rounded-md border border-slate-300 px-3 py-1 text-xs"
-              onClick={logout}
-            >
-              Logout
-            </button>
+    <div className="min-h-screen bg-[#080B14] text-white overflow-x-hidden">
+      {/* ── Nav ── */}
+      <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/5 backdrop-blur-xl bg-[#080B14]/80">
+        <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">📄</span>
+            <span className="font-bold text-sm tracking-tight">
+              Paperwork <span className="text-violet-400">OS</span>
+            </span>
           </div>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-            The missing operating system for Indian life admin
-          </h1>
-          <p className="mt-2 text-sm text-slate-600">
-            Organize, track, and safely share life documents with expiry intelligence,
-            usage mapping, and family vault access.
-          </p>
-          <p className="mt-2 text-xs text-slate-500">Signed in as {user.email}</p>
-        </header>
+          <div className="hidden md:flex items-center gap-8 text-sm text-slate-400">
+            <a href="#features" className="hover:text-white transition-colors">Features</a>
+            <a href="#how-it-works" className="hover:text-white transition-colors">How it works</a>
+            <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/dashboard"
+              className="text-sm text-slate-400 hover:text-white transition-colors px-3 py-1.5"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/dashboard"
+              className="bg-violet-600 hover:bg-violet-500 transition-colors text-sm font-medium px-4 py-2 rounded-lg"
+            >
+              Get started free
+            </Link>
+          </div>
+        </div>
+      </nav>
 
-        {error && (
-          <section className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </section>
-        )}
+      {/* ── Hero ── */}
+      <section
+        ref={heroRef}
+        className="relative min-h-screen flex items-center justify-center pt-24 pb-20 px-6 overflow-hidden"
+      >
+        {/* Animated background gradient */}
+        <div
+          className="absolute inset-0 opacity-40 transition-transform duration-700 ease-out"
+          style={{
+            background: `radial-gradient(ellipse 80% 60% at ${50 + (mounted ? mousePos.x * 0.3 : 0)}% ${40 + (mounted ? mousePos.y * 0.3 : 0)}%, rgba(139,92,246,0.3) 0%, rgba(59,130,246,0.15) 40%, transparent 70%)`,
+          }}
+        />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(16,185,129,0.08),transparent_60%)]" />
 
-        <section className="grid gap-4 md:grid-cols-4">
-          <Stat title="Total documents" value={String(documents.length)} />
-          <Stat title="Expiring in 90 days" value={String(reminders.length)} />
-          <Stat
-            title="Active share links"
-            value={String(shareLinks.filter((item) => !item.revoked).length)}
-          />
-          <Stat title="Family members" value={String(members.length)} />
-        </section>
+        {/* Grid texture */}
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: `linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.5) 1px, transparent 1px)`,
+            backgroundSize: "60px 60px",
+          }}
+        />
 
-        <section className="grid gap-6 lg:grid-cols-3">
-          <article className="rounded-xl border border-slate-200 bg-white p-4 lg:col-span-2">
-            <h2 className="text-lg font-semibold">Add document</h2>
-            <p className="mb-4 text-sm text-slate-600">
-              Save by life category instead of folders and map where each file is
-              used.
-            </p>
-            <div className="grid gap-3 md:grid-cols-2">
-              <input
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                placeholder="Document name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-              <select
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={category}
-                onChange={(event) =>
-                  setCategory(event.target.value as (typeof lifeCategories)[number])
-                }
-              >
-                {lifeCategories.map((item) => (
-                  <option key={item}>{item}</option>
-                ))}
-              </select>
-              <select
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={owner}
-                onChange={(event) => setOwner(event.target.value as "Self" | "Family")}
-              >
-                <option>Self</option>
-                <option>Family</option>
-              </select>
-              <input
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                type="date"
-                value={expiryDate}
-                onChange={(event) => setExpiryDate(event.target.value)}
-              />
-              <textarea
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm md:col-span-2"
-                rows={2}
-                placeholder="Notes or why this matters"
-                value={notes}
-                onChange={(event) => setNotes(event.target.value)}
-              />
-            </div>
-
-            <div className="mt-4">
-              <p className="mb-2 text-sm font-medium">Usage mapping</p>
-              <div className="flex flex-wrap gap-2">
-                {usageContexts.map((context) => {
-                  const active = selectedUsage.includes(context);
-                  return (
-                    <button
-                      key={context}
-                      type="button"
-                      onClick={() => toggleUsage(context)}
-                      className={`rounded-full border px-3 py-1 text-xs font-medium ${
-                        active
-                          ? "border-slate-900 bg-slate-900 text-white"
-                          : "border-slate-300 bg-white text-slate-700"
-                      }`}
-                    >
-                      {context}
-                    </button>
-                  );
-                })}
+        {/* Floating doc cards */}
+        {mounted && (
+          <>
+            <div
+              className="absolute top-32 left-[8%] hidden lg:block"
+              style={{ transform: `translate(${mousePos.x * 0.1}px,${mousePos.y * 0.1}px)` }}
+            >
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4 backdrop-blur-sm w-52 shadow-xl">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">🪪</span>
+                  <span className="text-xs font-medium">Aadhaar Card</span>
+                </div>
+                <div className="flex gap-1.5 flex-wrap">
+                  <span className="text-[10px] bg-violet-500/20 text-violet-300 px-2 py-0.5 rounded-full">Identity</span>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full">KYC</span>
+                </div>
               </div>
             </div>
 
-            <button
-              type="button"
-              className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
-              onClick={addDocument}
+            <div
+              className="absolute top-48 right-[7%] hidden lg:block"
+              style={{ transform: `translate(${-mousePos.x * 0.12}px,${mousePos.y * 0.08}px)` }}
             >
-              Add to Paperwork OS
-            </button>
-          </article>
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4 backdrop-blur-sm w-56 shadow-xl">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-lg">⚠️</span>
+                  <span className="text-xs font-medium text-amber-300">Expiry Alert</span>
+                </div>
+                <p className="text-[11px] text-slate-400">Passport expires in <span className="text-red-400 font-semibold">23 days</span></p>
+              </div>
+            </div>
 
-          <article className="rounded-xl border border-slate-200 bg-white p-4">
-            <h2 className="text-lg font-semibold">Category health</h2>
-            <p className="mb-3 text-sm text-slate-600">
-              Instant view of paperwork coverage by life area.
+            <div
+              className="absolute bottom-40 left-[10%] hidden xl:block"
+              style={{ transform: `translate(${mousePos.x * 0.15}px,${-mousePos.y * 0.1}px)` }}
+            >
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4 backdrop-blur-sm w-52 shadow-xl">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">🔗</span>
+                  <span className="text-xs font-medium text-sky-300">Secure Link</span>
+                </div>
+                <p className="text-[11px] text-slate-400">PAN Card — shared for <span className="font-medium text-white">HR verification</span></p>
+                <p className="text-[10px] text-slate-500 mt-1">Expires in 24h · Watermarked</p>
+              </div>
+            </div>
+
+            <div
+              className="absolute bottom-36 right-[9%] hidden xl:block"
+              style={{ transform: `translate(${-mousePos.x * 0.1}px,${-mousePos.y * 0.12}px)` }}
+            >
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4 backdrop-blur-sm w-56 shadow-xl">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">👨‍👩‍👧</span>
+                  <span className="text-xs font-medium">Family Vault</span>
+                </div>
+                <p className="text-[11px] text-slate-400">3 members · Emergency access enabled</p>
+              </div>
+            </div>
+          </>
+        )}
+
+        <div className="relative text-center max-w-4xl mx-auto">
+          <div className="inline-flex items-center gap-2 bg-violet-500/10 border border-violet-500/20 text-violet-300 text-xs font-medium px-4 py-2 rounded-full mb-8">
+            <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+            Built for Indian life · Launching soon
+          </div>
+
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-[1.05] mb-6">
+            The missing OS for
+            <br />
+            <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-sky-400 bg-clip-text text-transparent">
+              Indian paperwork
+            </span>
+          </h1>
+
+          <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+            Aadhaar in WhatsApp. PAN in email. Marksheet in cupboard.{" "}
+            <span className="text-white font-medium">
+              Personal Paperwork OS is the one place all your life documents belong — with expiry intelligence, usage
+              mapping, and safe sharing.
+            </span>
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              href="/dashboard"
+              className="group w-full sm:w-auto bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 transition-all duration-200 text-white font-semibold px-8 py-4 rounded-xl shadow-lg shadow-violet-900/40 text-sm flex items-center justify-center gap-2"
+            >
+              Start for free
+              <span className="group-hover:translate-x-1 transition-transform">→</span>
+            </Link>
+            <a
+              href="#features"
+              className="w-full sm:w-auto bg-white/5 hover:bg-white/10 border border-white/10 transition-all duration-200 text-sm font-medium px-8 py-4 rounded-xl text-center"
+            >
+              See how it works
+            </a>
+          </div>
+
+          <p className="mt-6 text-xs text-slate-600">
+            No credit card required · Free forever for basic use
+          </p>
+        </div>
+      </section>
+
+      {/* ── Stats bar ── */}
+      <section className="border-y border-white/5 bg-white/[0.02]">
+        <div className="mx-auto max-w-5xl px-6 py-12 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+          {stats.map((stat) => (
+            <div key={stat.label}>
+              <p className="text-4xl font-black text-white">
+                {stat.value}
+                <span className="text-violet-400 ml-0.5">{stat.suffix}</span>
+              </p>
+              <p className="text-sm text-slate-500 mt-1">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Problem statement ── */}
+      <section className="py-24 px-6">
+        <div className="mx-auto max-w-5xl">
+          <div className="text-center mb-16">
+            <p className="text-slate-500 text-sm uppercase tracking-widest mb-3">The problem</p>
+            <h2 className="text-4xl font-black leading-tight">
+              Your documents are{" "}
+              <span className="text-slate-500 line-through decoration-red-500">organised</span>
+              <br />
+              <span className="text-white">scattered everywhere</span>
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-4">
+            {[
+              { tool: "WhatsApp", problem: "Zero organisation. Zero security. Just chaos.", icon: "📱", color: "border-green-900/40 bg-green-950/20" },
+              { tool: "Google Drive", problem: "Flat folders. No expiry intelligence. No context.", icon: "📁", color: "border-blue-900/40 bg-blue-950/20" },
+              { tool: "DigiLocker", problem: "Government-first. Terrible UX. Never opened daily.", icon: "🏛️", color: "border-orange-900/40 bg-orange-950/20" },
+            ].map((item) => (
+              <div key={item.tool} className={`rounded-2xl border p-6 ${item.color}`}>
+                <div className="text-3xl mb-3">{item.icon}</div>
+                <h3 className="font-bold text-lg mb-2">{item.tool}</h3>
+                <p className="text-slate-400 text-sm">{item.problem}</p>
+                <div className="mt-4 flex items-center gap-2 text-red-400 text-xs font-medium">
+                  <span className="text-red-400">✗</span> Broken for Indian life
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-12 rounded-2xl border border-violet-500/20 bg-violet-500/5 p-8 text-center">
+            <p className="text-slate-400 text-sm mb-2">There is no product that owns this problem end-to-end.</p>
+            <p className="text-xl font-bold text-white">
+              That&apos;s exactly what Personal Paperwork OS is built to solve.
             </p>
-            <ul className="space-y-2">
-              {categoryBreakdown.map((item) => (
-                <li key={item.category} className="flex items-center justify-between text-sm">
-                  <span>{item.category}</span>
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium">
-                    {item.count}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </article>
-        </section>
+          </div>
+        </div>
+      </section>
 
-        <section className="grid gap-6 xl:grid-cols-2">
-          <article className="rounded-xl border border-slate-200 bg-white p-4">
-            <h2 className="text-lg font-semibold">Documents</h2>
-            <div className="mt-3 space-y-3">
-              {documents.map((doc) => (
-                <div key={doc.id} className="rounded-lg border border-slate-200 p-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-medium">{doc.name}</h3>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs">
-                      {doc.category}
-                    </span>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs">
-                      {doc.owner}
-                    </span>
+      {/* ── Features ── */}
+      <section id="features" className="py-24 px-6">
+        <div className="mx-auto max-w-7xl">
+          <div className="text-center mb-16">
+            <p className="text-slate-500 text-sm uppercase tracking-widest mb-3">Core features</p>
+            <h2 className="text-4xl font-black">
+              Everything your paperwork
+              <br />
+              <span className="bg-gradient-to-r from-violet-400 to-sky-400 bg-clip-text text-transparent">
+                deserves, finally
+              </span>
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {features.map((feature) => (
+              <div
+                key={feature.title}
+                className={`group relative rounded-2xl border ${feature.border} bg-gradient-to-br ${feature.color} p-6 hover:scale-[1.02] transition-all duration-300 cursor-default`}
+              >
+                <div className="text-4xl mb-4">{feature.icon}</div>
+                <span className={`text-[10px] rounded-full px-2.5 py-1 font-semibold uppercase tracking-wide ${feature.badge}`}>
+                  {feature.subtitle}
+                </span>
+                <h3 className="mt-3 text-lg font-bold">{feature.title}</h3>
+                <p className="mt-2 text-sm text-slate-400 leading-relaxed">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── How it works ── */}
+      <section id="how-it-works" className="py-24 px-6 border-t border-white/5">
+        <div className="mx-auto max-w-5xl">
+          <div className="text-center mb-16">
+            <p className="text-slate-500 text-sm uppercase tracking-widest mb-3">How it works</p>
+            <h2 className="text-4xl font-black">
+              From chaos to clarity
+              <br />
+              <span className="text-slate-400">in four steps</span>
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {steps.map((step, i) => (
+              <div
+                key={step.number}
+                className="relative rounded-2xl border border-white/5 bg-white/[0.03] hover:bg-white/[0.05] transition-colors p-7"
+              >
+                <div className="flex items-start gap-5">
+                  <div className="shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-violet-600 to-purple-600 flex items-center justify-center font-black text-sm">
+                    {step.number}
                   </div>
-                  <p className="mt-1 text-xs text-slate-600">
-                    {doc.expiryDate
-                      ? `Expires ${formatDate(doc.expiryDate)}`
-                      : "No expiry tracked"}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">{doc.notes || "No notes"}</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {doc.usedFor.map((usage) => (
-                      <span
-                        key={`${doc.id}-${usage}`}
-                        className="rounded-full border border-slate-300 px-2 py-0.5 text-xs"
-                      >
-                        {usage}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {sharingPurposes.map((purpose) => (
-                      <button
-                        key={`${doc.id}-${purpose}`}
-                        className="rounded-md border border-slate-300 px-2 py-1 text-xs"
-                        onClick={() => void createShareLink(doc.id, purpose)}
-                      >
-                        Share for {purpose}
-                      </button>
-                    ))}
+                  <div>
+                    <h3 className="font-bold text-lg mb-2">{step.title}</h3>
+                    <p className="text-slate-400 text-sm leading-relaxed">{step.description}</p>
                   </div>
                 </div>
-              ))}
-            </div>
-          </article>
+                {i < steps.length - 1 && (
+                  <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 md:hidden text-slate-700">↓</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-          <article className="rounded-xl border border-slate-200 bg-white p-4">
-            <h2 className="text-lg font-semibold">Smart reminders</h2>
-            <p className="mb-3 text-sm text-slate-600">
-              Auto-prioritized renewals with urgency markers.
+      {/* ── Who it's for ── */}
+      <section className="py-24 px-6">
+        <div className="mx-auto max-w-5xl">
+          <div className="text-center mb-16">
+            <p className="text-slate-500 text-sm uppercase tracking-widest mb-3">For everyone</p>
+            <h2 className="text-4xl font-black">Paperwork pain has no age</h2>
+            <p className="mt-4 text-slate-400 max-w-xl mx-auto">
+              Whether you&apos;re a student or a senior, a professional or a parent — your paperwork deserves a home.
             </p>
-            {reminders.length === 0 ? (
-              <p className="text-sm text-slate-500">No upcoming renewals.</p>
-            ) : (
-              <ul className="space-y-2">
-                {reminders.map((item) => (
-                  <li
-                    key={item.documentId}
-                    className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  >
-                    <div>
-                      <p className="font-medium">{item.documentName}</p>
-                      <p className="text-xs text-slate-500">{item.category}</p>
-                    </div>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        item.severity === "critical"
-                          ? "bg-red-100 text-red-700"
-                          : item.severity === "warning"
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-sky-100 text-sky-700"
-                      }`}
-                    >
-                      {item.daysLeft} days left
-                    </span>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {segments.map((seg) => (
+              <div
+                key={seg.label}
+                className="rounded-2xl border border-white/5 bg-white/[0.03] hover:bg-white/[0.06] hover:border-violet-500/20 transition-all duration-300 p-6 text-center group"
+              >
+                <div className="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">{seg.emoji}</div>
+                <h3 className="font-bold text-lg mb-2">{seg.label}</h3>
+                <p className="text-slate-400 text-sm">{seg.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Testimonials ── */}
+      <section className="py-24 px-6 border-t border-white/5">
+        <div className="mx-auto max-w-5xl">
+          <div className="text-center mb-16">
+            <p className="text-slate-500 text-sm uppercase tracking-widest mb-3">Early users</p>
+            <h2 className="text-4xl font-black">Finally, someone built this</h2>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-5">
+            {testimonials.map((t) => (
+              <div
+                key={t.name}
+                className="rounded-2xl border border-white/5 bg-white/[0.03] p-6 flex flex-col justify-between"
+              >
+                <div>
+                  <div className="text-violet-400 text-2xl mb-4">&ldquo;</div>
+                  <p className="text-slate-300 leading-relaxed text-sm">{t.quote}</p>
+                </div>
+                <div className="flex items-center gap-3 mt-6">
+                  <div className={`w-9 h-9 rounded-full ${t.color} flex items-center justify-center text-sm font-bold`}>
+                    {t.avatar}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">{t.name}</p>
+                    <p className="text-xs text-slate-500">{t.role}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Pricing ── */}
+      <section id="pricing" className="py-24 px-6 border-t border-white/5">
+        <div className="mx-auto max-w-4xl">
+          <div className="text-center mb-16">
+            <p className="text-slate-500 text-sm uppercase tracking-widest mb-3">Pricing</p>
+            <h2 className="text-4xl font-black">
+              Start free.{" "}
+              <span className="bg-gradient-to-r from-violet-400 to-sky-400 bg-clip-text text-transparent">
+                Upgrade when you need more.
+              </span>
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Free */}
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8">
+              <h3 className="text-xl font-bold mb-1">Free</h3>
+              <p className="text-slate-500 text-sm mb-6">Get started with the basics</p>
+              <div className="text-4xl font-black mb-6">
+                ₹0
+                <span className="text-slate-500 text-sm font-normal ml-1">/ month</span>
+              </div>
+              <ul className="space-y-3 mb-8 text-sm text-slate-400">
+                {["Up to 15 documents", "Basic expiry reminders", "Secure share links", "1 family member"].map((item) => (
+                  <li key={item} className="flex items-center gap-3">
+                    <span className="text-emerald-400">✓</span>
+                    {item}
                   </li>
                 ))}
               </ul>
-            )}
-          </article>
-        </section>
-
-        <section className="grid gap-6 xl:grid-cols-2">
-          <article className="rounded-xl border border-slate-200 bg-white p-4">
-            <h2 className="text-lg font-semibold">Usage intelligence graph</h2>
-            <p className="mb-3 text-sm text-slate-600">
-              See where documents are reused so replacements are safe.
-            </p>
-            <ul className="space-y-2 text-sm">
-              {Array.from(usageIndex.entries()).map(([context, mapped]) => (
-                <li key={context} className="rounded-lg border border-slate-200 p-2">
-                  <p className="font-medium">{context}</p>
-                  <p className="text-xs text-slate-600">
-                    {mapped.length ? mapped.join(", ") : "No documents mapped"}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </article>
-
-          <article className="rounded-xl border border-slate-200 bg-white p-4">
-            <h2 className="text-lg font-semibold">Secure share center</h2>
-            <p className="mb-3 text-sm text-slate-600">
-              Time-limited links with watermark and one-click revoke.
-            </p>
-            {shareLinks.length === 0 ? (
-              <p className="text-sm text-slate-500">No links generated yet.</p>
-            ) : (
-              <ul className="space-y-2 text-sm">
-                {shareLinks.map((link) => {
-                  const documentName =
-                    documents.find((doc) => doc.id === link.documentId)?.name ??
-                    "Document";
-
-                  return (
-                    <li key={link.id} className="rounded-lg border border-slate-200 p-3">
-                      <p className="font-medium">{documentName}</p>
-                      <p className="text-xs text-slate-600">Purpose: {link.purpose}</p>
-                      <p className="text-xs text-slate-600">
-                        Expires: {formatDate(link.expiresAt)}
-                      </p>
-                      <p className="text-xs text-slate-600">
-                        Watermark: {link.watermarkText}
-                      </p>
-                      <div className="mt-2 flex items-center gap-2">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs ${
-                            link.revoked
-                              ? "bg-slate-200 text-slate-600"
-                              : "bg-emerald-100 text-emerald-700"
-                          }`}
-                        >
-                          {link.revoked ? "Revoked" : "Active"}
-                        </span>
-                        {!link.revoked && (
-                          <button
-                            className="rounded-md border border-slate-300 px-2 py-1 text-xs"
-                            onClick={() => void revokeShare(link.id)}
-                          >
-                            Revoke
-                          </button>
-                        )}
-                        {!link.revoked && (
-                          <button
-                            className="rounded-md border border-slate-300 px-2 py-1 text-xs"
-                            onClick={() => void openShare(link.id)}
-                          >
-                            Open link
-                          </button>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </article>
-        </section>
-
-        <section className="rounded-xl border border-slate-200 bg-white p-4">
-          <h2 className="text-lg font-semibold">Family vault</h2>
-          <p className="mb-4 text-sm text-slate-600">
-            Shared documents with role-based access and emergency mode.
-          </p>
-
-          <div className="mb-4 grid gap-3 md:grid-cols-3">
-            <input
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              placeholder="Member name"
-              value={memberName}
-              onChange={(event) => setMemberName(event.target.value)}
-            />
-            <input
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              placeholder="Relation"
-              value={memberRelation}
-              onChange={(event) => setMemberRelation(event.target.value)}
-            />
-            <button
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              onClick={addMember}
-            >
-              Add member
-            </button>
-          </div>
-
-          <ul className="space-y-2 text-sm">
-            {members.map((member) => (
-              <li
-                key={member.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2"
+              <Link
+                href="/dashboard"
+                className="block w-full text-center bg-white/5 hover:bg-white/10 border border-white/10 transition-colors font-medium py-3 rounded-xl text-sm"
               >
-                <div>
-                  <p className="font-medium">{member.name}</p>
-                  <p className="text-xs text-slate-500">{member.relation}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    className="rounded-md border border-slate-300 px-2 py-1 text-xs"
-                    onClick={() =>
-                      void patchMember(member.id, {
-                        role: member.role === "Viewer" ? "Editor" : "Viewer",
-                      })
-                    }
-                  >
-                    {member.role}
-                  </button>
-                  <button
-                    className="rounded-md border border-slate-300 px-2 py-1 text-xs"
-                    onClick={() =>
-                      void patchMember(member.id, {
-                        emergencyAccess: !member.emergencyAccess,
-                      })
-                    }
-                  >
-                    {member.emergencyAccess ? "Emergency on" : "Emergency off"}
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </main>
-    </div>
-  );
-}
+                Get started free
+              </Link>
+            </div>
 
-function Stat({ title, value }: { title: string; value: string }) {
-  return (
-    <article className="rounded-xl border border-slate-200 bg-white p-4">
-      <p className="text-sm text-slate-500">{title}</p>
-      <p className="mt-1 text-2xl font-semibold">{value}</p>
-    </article>
+            {/* Premium */}
+            <div className="relative rounded-2xl border border-violet-500/40 bg-gradient-to-br from-violet-500/10 to-purple-500/5 p-8">
+              <div className="absolute -top-3 right-6 bg-violet-600 text-xs font-bold px-3 py-1 rounded-full">
+                RECOMMENDED
+              </div>
+              <h3 className="text-xl font-bold mb-1">Premium</h3>
+              <p className="text-slate-400 text-sm mb-6">The full Paperwork OS experience</p>
+              <div className="text-4xl font-black mb-1">
+                ₹149
+                <span className="text-slate-500 text-sm font-normal ml-1">/ month</span>
+              </div>
+              <p className="text-slate-500 text-xs mb-6">or ₹999/year — save 44%</p>
+              <ul className="space-y-3 mb-8 text-sm text-slate-300">
+                {[
+                  "Unlimited documents",
+                  "Advanced expiry intelligence",
+                  "Family vault (up to 10 members)",
+                  "Watermarked secure sharing",
+                  "Usage intelligence graph",
+                  "Priority support",
+                ].map((item) => (
+                  <li key={item} className="flex items-center gap-3">
+                    <span className="text-violet-400">✓</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/dashboard"
+                className="block w-full text-center bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 transition-all font-semibold py-3 rounded-xl text-sm shadow-lg shadow-violet-900/40"
+              >
+                Start free trial
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── CTA Banner ── */}
+      <section className="py-24 px-6">
+        <div className="mx-auto max-w-4xl text-center">
+          <div className="relative rounded-3xl border border-violet-500/20 bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-sky-500/10 p-16 overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(139,92,246,0.15),transparent_70%)]" />
+            <div className="relative">
+              <h2 className="text-4xl sm:text-5xl font-black mb-6 leading-tight">
+                Every Indian deserves
+                <br />
+                a paperwork system
+                <br />
+                <span className="bg-gradient-to-r from-violet-400 to-sky-400 bg-clip-text text-transparent">
+                  that actually works.
+                </span>
+              </h2>
+              <p className="text-slate-400 mb-10 max-w-xl mx-auto">
+                Join thousands of Indians who&apos;ve stopped losing documents, missing renewals, and sending PDFs over WhatsApp.
+              </p>
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 transition-all text-white font-bold px-10 py-4 rounded-xl text-base shadow-xl shadow-violet-900/40"
+              >
+                Start for free →
+              </Link>
+              <p className="mt-4 text-xs text-slate-600">No credit card · Cancel anytime · Made for India</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Footer ── */}
+      <footer className="border-t border-white/5 py-12 px-6">
+        <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between gap-6 text-sm text-slate-600">
+          <div className="flex items-center gap-2">
+            <span>📄</span>
+            <span className="font-bold text-slate-400">
+              Paperwork <span className="text-violet-400">OS</span>
+            </span>
+            <span className="ml-2">— The missing operating system for Indian life</span>
+          </div>
+          <div className="flex gap-6">
+            <a href="#features" className="hover:text-slate-400 transition-colors">Features</a>
+            <a href="#pricing" className="hover:text-slate-400 transition-colors">Pricing</a>
+            <Link href="/dashboard" className="hover:text-slate-400 transition-colors">Sign in</Link>
+          </div>
+          <p>© 2026 Personal Paperwork OS. Built for India.</p>
+        </div>
+      </footer>
+    </div>
   );
 }

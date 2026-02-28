@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #080B14;
+  --foreground: #ffffff;
   --font-sans-system:
     "Inter", "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
   --font-mono-system:
@@ -16,15 +16,16 @@
   --font-mono: var(--font-mono-system);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans-system);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
