@@ -127,10 +127,10 @@ export default function GradientBlinds({
         style={{
           left: mousePos.x,
           top: mousePos.y,
-          width: \`\${spotlightRadius * 100}%\`,
-          height: \`\${spotlightRadius * 100}%\`,
+          width: `${spotlightRadius * 100}%`,
+          height: `${spotlightRadius * 100}%`,
           transform: "translate(-50%, -50%)",
-          background: \`radial-gradient(circle, rgba(255,255,255,\${spotlightOpacity}) 0%, rgba(255,255,255,0) \${spotlightSoftness * 100}%)\`,
+          background: `radial-gradient(circle, rgba(255,255,255,${spotlightOpacity}) 0%, rgba(255,255,255,0) ${spotlightSoftness * 100}%)`,
           mixBlendMode: "overlay",
         }}
       />
